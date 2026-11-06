@@ -1,0 +1,4 @@
+{$ENGYM_DOMAIN} {
+    encode zstd gzip
+    reverse_proxy engym:8080
+}

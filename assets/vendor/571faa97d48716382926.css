@@ -1,0 +1,63 @@
+@font-face {
+  font-family: 'Chivo';
+  font-style: italic;
+  font-weight: 700;
+  font-display: swap;
+  src: url(/assets/0366742f4197c76086c8.woff2) format('truetype');
+}
+@font-face {
+  font-family: 'Chivo';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url(/assets/df140c59544a6a97d10b.woff2) format('truetype');
+}
+@font-face {
+  font-family: 'Chivo';
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url(/assets/37f5c5f76e45ea56ca17.woff2) format('truetype');
+}
+@font-face {
+  font-family: 'Chivo';
+  font-style: normal;
+  font-weight: 900;
+  font-display: swap;
+  src: url(/assets/2012c28630ee77efd8d4.woff2) format('truetype');
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url(/assets/5f6675d606a21f264f6c.woff2) format('truetype');
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url(/assets/c1c656933a1f4b14b7cc.woff2) format('truetype');
+}
+@font-face {
+  font-family: 'Space Grotesk';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(/assets/0dfc29fde7d95ca65fe2.woff2) format('truetype');
+}
+@font-face {
+  font-family: 'Space Grotesk';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url(/assets/56632cca6632f379925b.woff2) format('truetype');
+}
+@font-face {
+  font-family: 'Space Grotesk';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url(/assets/aaf352f017a5007bcd68.woff2) format('truetype');
+}

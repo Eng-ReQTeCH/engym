@@ -1,0 +1,1 @@
+Exercise data by RepDB (https://repdb.co). Square 512px free-tier illustrations and exercise metadata integrated in Engym under REPDB-LICENSE.md. No premium samples used. Not licensed for redistribution as a standalone dataset.

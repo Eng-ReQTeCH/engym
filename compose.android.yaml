@@ -1,0 +1,10 @@
+services:
+  android-build:
+    build:
+      context: .
+      dockerfile: Dockerfile.android
+    volumes:
+      - engym-signing:/signing
+      - ./release:/output
+volumes:
+  engym-signing:

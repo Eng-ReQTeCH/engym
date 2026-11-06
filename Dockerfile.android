@@ -1,0 +1,19 @@
+FROM node:22.23-alpine AS web
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY . .
+RUN npm run build
+
+FROM gradle:8.10.2-jdk17
+USER root
+ENV ANDROID_HOME=/opt/android-sdk ANDROID_SDK_ROOT=/opt/android-sdk
+RUN apt-get update && apt-get install -y --no-install-recommends curl unzip ca-certificates && rm -rf /var/lib/apt/lists/*
+RUN mkdir -p /opt/android-sdk/cmdline-tools && curl --fail --location --retry 3 https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -o /tmp/tools.zip && unzip -q /tmp/tools.zip -d /opt/android-sdk/cmdline-tools && mv /opt/android-sdk/cmdline-tools/cmdline-tools /opt/android-sdk/cmdline-tools/latest && rm /tmp/tools.zip
+RUN yes | /opt/android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses >/dev/null && /opt/android-sdk/cmdline-tools/latest/bin/sdkmanager "platforms;android-35" "build-tools;35.0.0"
+WORKDIR /workspace/android
+COPY android/ ./
+COPY --from=web /app/dist/ ./app/src/main/assets/
+COPY scripts/build-apk.sh /usr/local/bin/build-engym-apk
+RUN sed -i 's/\r$//' /usr/local/bin/build-engym-apk && chmod +x /usr/local/bin/build-engym-apk
+ENTRYPOINT ["/usr/local/bin/build-engym-apk"]

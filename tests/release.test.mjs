@@ -1,0 +1,25 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {mkdtemp,rm,copyFile,readdir} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import path from 'node:path';
+import {createApp} from '../server/index.mjs';
+import {snapshot} from '../server/backup.mjs';
+test('production origin, secure cookies, moderation and password/session isolation',async()=>{
+ const dir=await mkdtemp(path.join(tmpdir(),'engym-hardening-'));const server=createApp({dataDir:dir,publicURL:'https://engym.minaghali.xyz',trustProxy:true});await new Promise(r=>server.listen(0,'127.0.0.1',r));const base=`http://127.0.0.1:${server.address().port}`;
+ const call=async(p,body,token,origin='https://engym.minaghali.xyz')=>{const r=await fetch(base+p,{method:body?'POST':'GET',headers:{'Content-Type':'application/json',Origin:origin,...(token?{Authorization:'Bearer '+token}:{})},body:body?JSON.stringify(body):undefined});return {status:r.status,cookie:r.headers.get('set-cookie'),headers:r.headers,...await r.json()};};
+ try{
+ assert.equal((await call('/api/auth/register',{handle:'evil'},null,'https://evil.example')).status,403);
+ const a=await call('/api/auth/register',{name:'Alice',handle:'alice',email:'alice@test.example',password:'correct-horse-1'}),b=await call('/api/auth/register',{name:'Bob',handle:'bobby',email:'bob@test.example',password:'correct-horse-1'});assert.match(a.cookie,/HttpOnly/);assert.match(a.cookie,/Secure/);assert.match(a.headers.get('content-security-policy'),/frame-ancestors 'none'/);assert.ok(a.headers.has('strict-transport-security'));
+ const extra=await call('/api/auth/login',{login:'alice',password:'correct-horse-1'});assert.equal((await call('/api/auth/password',{current:'wrong',password:'correct-horse-2'},a.token)).status,401);assert.equal((await call('/api/auth/password',{current:'correct-horse-1',password:'correct-horse-2'},a.token)).status,200);assert.equal((await call('/api/auth/me',null,extra.token)).user,null);assert.equal((await call('/api/auth/me',null,a.token)).user.id,a.user.id);
+ const w={name:'Workout',startedAt:Date.now()-60000,finishedAt:Date.now(),exercises:[{id:'db-bench',name:'Bench',sets:[{weight:20,reps:10,done:true}]}]};await call('/api/sync',{mutations:[{id:'workout',type:'workout',mutationId:'w',baseVersion:0,data:w}]},a.token);await call('/api/posts',{workoutId:'workout',title:'Session',caption:'Real',visibility:'everyone'},a.token);const p=(await call('/api/feed',null,b.token)).posts[0];assert.equal((await call('/api/reports',{postId:p.id,reason:'Spam'},b.token)).status,200);await call('/api/blocks',{target:a.user.id,block:true},b.token);assert.equal((await call('/api/feed',null,b.token)).posts.length,0);assert.equal((await call('/api/users?q=alice',null,b.token)).users.length,0);assert.equal((await call('/api/kudos',{postId:p.id,liked:true},b.token)).status,404);assert.equal((await call('/api/blocks',null,b.token)).users.length,1);await call('/api/blocks',{target:a.user.id,block:false},b.token);assert.equal((await call('/api/feed',null,b.token)).posts.length,1);
+ }finally{await new Promise(r=>server.close(r));await rm(dir,{recursive:true,force:true});}
+});
+test('automatic SQLite snapshots verify integrity and restore accounts and workouts',async()=>{
+ const dir=await mkdtemp(path.join(tmpdir(),'engym-snapshot-')),restored=await mkdtemp(path.join(tmpdir(),'engym-restore-'));let server=createApp({dataDir:dir});await new Promise(r=>server.listen(0,'127.0.0.1',r));let base=`http://127.0.0.1:${server.address().port}`;
+ try{
+ let r=await fetch(base+'/api/auth/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:'Restore Athlete',handle:'restore',email:'restore@test.example',password:'correct-horse-1'})});const account=await r.json();
+ const mutation={id:'routine',type:'routine',baseVersion:0,mutationId:'r',data:{name:'Saved routine',exercises:['db-bench'],targets:{'db-bench':{sets:3,reps:10}},restSeconds:90}};await fetch(base+'/api/sync',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+account.token},body:JSON.stringify({mutations:[mutation]})});const file=await snapshot({dataDir:dir,retain:2});await snapshot({dataDir:dir,retain:2});await snapshot({dataDir:dir,retain:2});const files=(await readdir(path.join(dir,'backups'))).filter(f=>f.endsWith('.sqlite'));assert.equal(files.length,2);await copyFile(path.join(dir,'backups',files.sort().at(-1)),path.join(restored,'engym.sqlite'));
+ await new Promise(r=>server.close(r));server=createApp({dataDir:restored});await new Promise(r=>server.listen(0,'127.0.0.1',r));base=`http://127.0.0.1:${server.address().port}`;r=await fetch(base+'/api/sync',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+account.token},body:JSON.stringify({mutations:[]})});const data=await r.json();assert.equal(data.records[0].data.name,'Saved routine');
+ }finally{await new Promise(r=>server.close(r));await rm(dir,{recursive:true,force:true});await rm(restored,{recursive:true,force:true});}
+});

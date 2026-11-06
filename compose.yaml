@@ -1,0 +1,50 @@
+services:
+  engym:
+    build: .
+    image: engym:1.0
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - engym-data:/data
+    restart: unless-stopped
+    init: true
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    environment:
+      PORT: 8080
+      DATA_DIR: /data
+      PUBLIC_URL: ${PUBLIC_URL:-https://engym.minaghali.xyz}
+      TRUST_PROXY: ${TRUST_PROXY:-false}
+    logging:
+      driver: json-file
+      options: {max-size: "10m", max-file: "3"}
+  backups:
+    image: engym:1.0
+    build: .
+    command: ["node", "server/backup.mjs"]
+    restart: unless-stopped
+    init: true
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    environment:
+      DATA_DIR: /data
+      BACKUP_DIR: /data/backups
+      BACKUP_INTERVAL_SECONDS: 21600
+      BACKUP_RETAIN: 28
+    volumes:
+      - engym-data:/data
+    depends_on:
+      engym: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "node", "-e", "const fs=require('fs');const p='/data/backups';const f=fs.readdirSync(p).filter(x=>x.endsWith('.sqlite'));if(!f.length||Date.now()-Math.max(...f.map(x=>fs.statSync(p+'/'+x).mtimeMs))>86400000)process.exit(1)"]
+      interval: 1h
+      start_period: 60s
+    logging:
+      driver: json-file
+      options: {max-size: "10m", max-file: "3"}
+volumes:
+  engym-data:
